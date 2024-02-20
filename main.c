@@ -6,6 +6,7 @@
 #include <ctype.h>
 
 #define MAX_PATH_LEN 512
+#define MAX_NAME_LEN 256
 
 int is_numeric(const char *str) {
     while (*str) {
@@ -17,28 +18,30 @@ int is_numeric(const char *str) {
     return 1;
 }
 
-void get_process_name(const char *pid, char *name) {
+char* get_process_name(const char *pid) {
     char path[MAX_PATH_LEN];
     snprintf(path, sizeof(path), "/proc/%s/comm", pid);
 
     FILE *file = fopen(path, "r");
     if (file) {
-        fgets(name, MAX_PATH_LEN, file);
+        char* name = malloc(MAX_NAME_LEN * sizeof(char));
+        if (!name) {
+            fclose(file);
+            return NULL;
+        }
+        fgets(name, MAX_NAME_LEN, file);
         fclose(file);
 
-        // Remove newline character if present
         size_t len = strlen(name);
         if (len > 0 && name[len - 1] == '\n') {
             name[len - 1] = '\0';
         }
-    } else {
-        // Error handling if unable to open the file
-        snprintf(name, MAX_PATH_LEN, "N/A");
+        return name;
     }
+    return NULL;
 }
 
 void display_processes() {
-    // Get the list of processes
     DIR *dir;
     struct dirent *entry;
     dir = opendir("/proc");
@@ -48,37 +51,30 @@ void display_processes() {
         exit(1);
     }
 
-    // Display the list of processes with PID and process name
     int row = 0;
-    char name[MAX_PATH_LEN];
+    mvprintw(row, 0, "%-10s %-s", "PID", "Nom");
+    row++;
 
     while ((entry = readdir(dir)) != NULL) {
-        // Check if d_name is a numeric value
         if (is_numeric(entry->d_name)) {
-            get_process_name(entry->d_name, name);
-            mvprintw(row, 0, "PID : %-10s Name : %s", entry->d_name, name);
-            row++;
+            char* process_name = get_process_name(entry->d_name);
+            if (process_name) {
+                mvprintw(row, 0, "%-10s %s", entry->d_name, process_name);
+                free(process_name);
+                row++;
+            }
         }
     }
     closedir(dir);
 }
 
 int main() {
-    // Initialize ncurses
     initscr();
     noecho();
     cbreak();
-
-    // Display processes
     display_processes();
-
-    // Refresh the window
     refresh();
-
-    // Wait for the user to press a key
     getch();
-
-    // End ncurses
     endwin();
 
     return 0;
