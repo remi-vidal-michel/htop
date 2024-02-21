@@ -41,25 +41,40 @@ char* get_process_name(const char *pid) {
     return NULL;
 }
 
+unsigned long get_process_memory(const char *pid) {
+    char path[MAX_PATH_LEN];
+    snprintf(path, sizeof(path), "/proc/%s/statm", pid);
+
+    FILE *statm_file = fopen(path, "r");
+    if (statm_file) {
+        unsigned long mem_pages;
+        fscanf(statm_file, "%lu", &mem_pages);
+        fclose(statm_file);
+        return mem_pages;
+    }
+    return 0;
+}
+
 void display_processes() {
     DIR *dir;
     struct dirent *entry;
     dir = opendir("/proc");
     if (dir == NULL) {
         endwin();
-        printf("Error opening /proc\n");
+        printf("Erreur lors de l'ouverture de /proc\n");
         exit(1);
     }
 
     int row = 0;
-    mvprintw(row, 0, "%-10s %-s", "PID", "Nom");
+    mvprintw(row, 0, "%-10s %-25s %-15s", "PID", "Nom", "Mémoire");
     row++;
 
     while ((entry = readdir(dir)) != NULL) {
         if (is_numeric(entry->d_name)) {
             char* process_name = get_process_name(entry->d_name);
             if (process_name) {
-                mvprintw(row, 0, "%-10s %s", entry->d_name, process_name);
+                unsigned long mem_pages = get_process_memory(entry->d_name);
+                mvprintw(row, 0, "%-10s %-25s %-15lu", entry->d_name, process_name, mem_pages);
                 free(process_name);
                 row++;
             }
