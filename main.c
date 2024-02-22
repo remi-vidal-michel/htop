@@ -89,7 +89,12 @@ void display_processes(ProcessInfo *processes, int start_index, int total_proces
     mvprintw(row, 0, "%-10s %-25s %-15s", "PID", "Nom", "Mémoire");
     row++;
 
-    for (int i = start_index; i < start_index + MAX_PROCESSES && i < total_processes; i++) {
+    int end_index = start_index + MAX_PROCESSES;
+    if (end_index > total_processes) {
+        end_index = total_processes;
+    }
+
+    for (int i = start_index; i < end_index; i++) {
         mvprintw(row, 0, "%-10s %-25s %-15lu", processes[i].pid, processes[i].name, processes[i].memory);
         row++;
     }
