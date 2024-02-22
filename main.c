@@ -114,9 +114,7 @@ void display_processes(ProcessInfo *processes, int start_index, int total_proces
             break;
     }
 
-    row++;
-
-    row++;
+    row += 2;
 
     int end_index = start_index + MAX_PROCESSES;
     if (end_index > total_processes) {
@@ -202,7 +200,7 @@ int main() {
 
         switch (ch) {
             case KEY_DOWN:
-                if (start_index + MAX_PROCESSES < total_processes)
+                if (start_index + (MAX_PROCESSES - 2) < total_processes)
                     start_index++;
                 break;
             case KEY_UP:
