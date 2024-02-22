@@ -11,6 +11,12 @@
 #define MAX_PROCESSES_DISPLAYED 20
 #define MAX_TOTAL_PROCESSES 256
 
+typedef struct {
+    char pid[MAX_NAME_LEN];
+    char name[MAX_NAME_LEN];
+    unsigned long memory;
+} ProcessInfo;
+
 int is_numeric(const char *str) {
     while (*str) {
         if (!isdigit(*str)) {
@@ -20,12 +26,6 @@ int is_numeric(const char *str) {
     }
     return 1;
 }
-
-typedef struct {
-    char pid[MAX_NAME_LEN];
-    char name[MAX_NAME_LEN];
-    unsigned long memory;
-} ProcessInfo;
 
 int pid_sort_order = 1;
 int name_sort_order = -1;
@@ -94,21 +94,8 @@ void update_processes(ProcessInfo *processes, int *total_processes) {
     }
 
     *total_processes = 0;
-    while ((entry = readdir(dir)) != NULL) {
-        if (is_numeric(entry->d_name)) {
-            (*total_processes)++;
-        }
-    }
-    closedir(dir);
-
-    dir = opendir("/proc");
-    if (dir == NULL) {
-        printf("Erreur lors de l'ouverture de /proc\n");
-        exit(1);
-    }
-
     int process_count = 0;
-    while ((entry = readdir(dir)) != NULL) {
+    while ((entry = readdir(dir)) != NULL && process_count < MAX_TOTAL_PROCESSES) {
         if (is_numeric(entry->d_name)) {
             strncpy(processes[process_count].pid, entry->d_name, MAX_NAME_LEN);
             processes[process_count].pid[MAX_NAME_LEN - 1] = '\0';
@@ -119,10 +106,30 @@ void update_processes(ProcessInfo *processes, int *total_processes) {
                 strncpy(processes[process_count].name, "N/A", MAX_NAME_LEN);
             }
             processes[process_count].memory = get_process_memory(entry->d_name);
+            (*total_processes)++;
             process_count++;
         }
     }
     closedir(dir);
+}
+
+void sort_processes(ProcessInfo *processes, int total_processes, int current_sort) {
+    int (*compare_function)(const void *, const void *);
+    switch (current_sort) {
+        case 0:
+            compare_function = compare_by_pid;
+            break;
+        case 1:
+            compare_function = compare_by_name;
+            break;
+        case 2:
+            compare_function = compare_by_memory;
+            break;
+        default:
+            compare_function = compare_by_pid; // Default to sorting by PID
+            break;
+    }
+    qsort(processes, total_processes, sizeof(ProcessInfo), compare_function);
 }
 
 void display_processes(ProcessInfo *processes, int start_index, int total_processes, int current_sort) {
@@ -176,8 +183,7 @@ int main() {
     int current_sort = 0;
     ProcessInfo processes[MAX_TOTAL_PROCESSES];
 
-    update_processes(processes, &total_processes);
-    qsort(processes, total_processes, sizeof(ProcessInfo), compare_by_pid);
+    int (*compare_functions[])(const void *, const void *) = {compare_by_pid, compare_by_name, compare_by_memory};
 
     int ch;
 
@@ -185,6 +191,8 @@ int main() {
 
     do {
         clear();
+        update_processes(processes, &total_processes);
+        sort_processes(processes, total_processes, current_sort);
         display_processes(processes, start_index, total_processes, current_sort);
         refresh();
         ch = getch();
@@ -202,37 +210,19 @@ int main() {
                 pid_sort_order *= -1;
                 name_sort_order = -1;
                 memory_sort_order = -1;
-                qsort(processes, total_processes, sizeof(ProcessInfo), compare_by_pid);
                 current_sort = 0;
                 break;
             case '2':
                 name_sort_order *= -1;
                 pid_sort_order = -1;
                 memory_sort_order = -1;
-                qsort(processes, total_processes, sizeof(ProcessInfo), compare_by_name);
                 current_sort = 1;
                 break;
             case '3':
                 memory_sort_order *= -1;
                 pid_sort_order = -1;
                 name_sort_order = -1;
-                qsort(processes, total_processes, sizeof(ProcessInfo), compare_by_memory);
                 current_sort = 2;
-                break;
-            default:
-                break;
-        }
-
-        update_processes(processes, &total_processes);
-        switch (current_sort) {
-            case 0:
-                qsort(processes, total_processes, sizeof(ProcessInfo), compare_by_pid);
-                break;
-            case 1:
-                qsort(processes, total_processes, sizeof(ProcessInfo), compare_by_name);
-                break;
-            case 2:
-                qsort(processes, total_processes, sizeof(ProcessInfo), compare_by_memory);
                 break;
             default:
                 break;
