@@ -19,6 +19,34 @@ int is_numeric(const char *str) {
     return 1;
 }
 
+typedef struct {
+    char pid[MAX_NAME_LEN];
+    char name[MAX_NAME_LEN];
+    unsigned long memory;
+} ProcessInfo;
+
+int compare_by_pid(const void *a, const void *b) {
+    const ProcessInfo *pa = (const ProcessInfo *)a;
+    const ProcessInfo *pb = (const ProcessInfo *)b;
+    int pid_a = atoi(pa->pid);
+    int pid_b = atoi(pb->pid);
+    return pid_a - pid_b;
+}
+
+int compare_by_name(const void *a, const void *b) {
+    const ProcessInfo *pa = (const ProcessInfo *)a;
+    const ProcessInfo *pb = (const ProcessInfo *)b;
+    return strcasecmp(pa->name, pb->name);
+}
+
+int compare_by_memory(const void *a, const void *b) {
+    const ProcessInfo *pa = (const ProcessInfo *)a;
+    const ProcessInfo *pb = (const ProcessInfo *)b;
+    if (pa->memory < pb->memory) return -1;
+    if (pa->memory > pb->memory) return 1;
+    return 0;
+}
+
 char* get_process_name(const char *pid) {
     char path[MAX_PATH_LEN];
     snprintf(path, sizeof(path), "/proc/%s/comm", pid);
@@ -56,36 +84,15 @@ unsigned long get_process_memory(const char *pid) {
     return 0;
 }
 
-void display_processes(int start_index) {
-    DIR *dir;
-    struct dirent *entry;
-    dir = opendir("/proc");
-    if (dir == NULL) {
-        endwin();
-        printf("Erreur lors de l'ouverture de /proc\n");
-        exit(1);
-    }
-
+void display_processes(ProcessInfo *processes, int start_index, int total_processes) {
     int row = 0;
     mvprintw(row, 0, "%-10s %-25s %-15s", "PID", "Nom", "Mémoire");
     row++;
 
-    int count = 0;
-    while ((entry = readdir(dir)) != NULL && count < MAX_PROCESSES + start_index) {
-        if (is_numeric(entry->d_name)) {
-            if (count >= start_index) {
-                char* process_name = get_process_name(entry->d_name);
-                if (process_name) {
-                    unsigned long mem_pages = get_process_memory(entry->d_name);
-                    mvprintw(row, 0, "%-10s %-25s %-15lu", entry->d_name, process_name, mem_pages);
-                    free(process_name);
-                    row++;
-                }
-            }
-            count++;
-        }
+    for (int i = start_index; i < start_index + MAX_PROCESSES && i < total_processes; i++) {
+        mvprintw(row, 0, "%-10s %-25s %-15lu", processes[i].pid, processes[i].name, processes[i].memory);
+        row++;
     }
-    closedir(dir);
 }
 
 int main() {
@@ -95,20 +102,88 @@ int main() {
     keypad(stdscr, TRUE);
 
     int start_index = 0;
+    int total_processes = 0;
+    int current_sort = 0;
+    ProcessInfo *processes = NULL;
+
+    DIR *dir;
+    struct dirent *entry;
+    dir = opendir("/proc");
+    if (dir == NULL) {
+        endwin();
+        printf("Erreur lors de l'ouverture de /proc\n");
+        exit(1);
+    }
+
+    while ((entry = readdir(dir)) != NULL) {
+        if (is_numeric(entry->d_name)) {
+            total_processes++;
+        }
+    }
+    closedir(dir);
+
+    processes = malloc(total_processes * sizeof(ProcessInfo));
+    if (!processes) {
+        endwin();
+        printf("Erreur lors de l'allocation de la mémoire\n");
+        exit(1);
+    }
+
+    dir = opendir("/proc");
+    if (dir == NULL) {
+        endwin();
+        printf("Erreur lors de l'ouverture de /proc\n");
+        exit(1);
+    }
+
+    int process_count = 0;
+    while ((entry = readdir(dir)) != NULL) {
+        if (is_numeric(entry->d_name)) {
+            strncpy(processes[process_count].pid, entry->d_name, MAX_NAME_LEN);
+            processes[process_count].pid[MAX_NAME_LEN - 1] = '\0';
+            char* process_name = get_process_name(entry->d_name);
+            if (process_name) {
+                strncpy(processes[process_count].name, process_name, MAX_NAME_LEN);
+                free(process_name);
+            } else {
+                strncpy(processes[process_count].name, "N/A", MAX_NAME_LEN);
+            }
+            processes[process_count].memory = get_process_memory(entry->d_name);
+            process_count++;
+        }
+    }
+    closedir(dir);
+
+    qsort(processes, total_processes, sizeof(ProcessInfo), compare_by_pid);
+
     int ch;
 
     do {
         clear();
-        display_processes(start_index);
+        display_processes(processes, start_index, total_processes);
         refresh();
         ch = getch();
 
         switch (ch) {
             case KEY_DOWN:
-                start_index++;
+                if (start_index + MAX_PROCESSES < total_processes)
+                    start_index++;
                 break;
             case KEY_UP:
-                if (start_index > 0) start_index--;
+                if (start_index > 0)
+                    start_index--;
+                break;
+            case '1':
+                qsort(processes, total_processes, sizeof(ProcessInfo), compare_by_pid);
+                current_sort = 0;
+                break;
+            case '2':
+                qsort(processes, total_processes, sizeof(ProcessInfo), compare_by_name);
+                current_sort = 1;
+                break;
+            case '3':
+                qsort(processes, total_processes, sizeof(ProcessInfo), compare_by_memory);
+                current_sort = 2;
                 break;
             default:
                 break;
@@ -116,6 +191,7 @@ int main() {
 
     } while (ch != 'q');
 
+    free(processes);
     endwin();
 
     return 0;
