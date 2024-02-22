@@ -26,24 +26,28 @@ typedef struct {
     unsigned long memory;
 } ProcessInfo;
 
+int pid_sort_order = 1;
+int name_sort_order = -1;
+int memory_sort_order = -1;
+
 int compare_by_pid(const void *a, const void *b) {
     const ProcessInfo *pa = (const ProcessInfo *)a;
     const ProcessInfo *pb = (const ProcessInfo *)b;
     int pid_a = atoi(pa->pid);
     int pid_b = atoi(pb->pid);
-    return pid_a - pid_b;
+    return pid_sort_order * (pid_a - pid_b);
 }
 
 int compare_by_name(const void *a, const void *b) {
     const ProcessInfo *pa = (const ProcessInfo *)a;
     const ProcessInfo *pb = (const ProcessInfo *)b;
-    return strcasecmp(pa->name, pb->name);
+    return name_sort_order * strcasecmp(pa->name, pb->name);
 }
 
 int compare_by_memory(const void *a, const void *b) {
     const ProcessInfo *pa = (const ProcessInfo *)a;
     const ProcessInfo *pb = (const ProcessInfo *)b;
-    return (pa->memory > pb->memory) - (pa->memory < pb->memory);
+    return memory_sort_order * ((pa->memory > pb->memory) - (pa->memory < pb->memory));
 }
 
 char* get_process_name(const char *pid) {
@@ -206,14 +210,23 @@ int main() {
                     start_index--;
                 break;
             case '1':
+                pid_sort_order *= -1;
+                name_sort_order = -1;
+                memory_sort_order = -1;
                 qsort(processes, total_processes, sizeof(ProcessInfo), compare_by_pid);
                 current_sort = 0;
                 break;
             case '2':
+                name_sort_order *= -1;
+                pid_sort_order = -1;
+                memory_sort_order = -1;
                 qsort(processes, total_processes, sizeof(ProcessInfo), compare_by_name);
                 current_sort = 1;
                 break;
             case '3':
+                memory_sort_order *= -1;
+                pid_sort_order = -1;
+                name_sort_order = -1;
                 qsort(processes, total_processes, sizeof(ProcessInfo), compare_by_memory);
                 current_sort = 2;
                 break;
