@@ -126,7 +126,7 @@ void sort_processes(ProcessInfo *processes, int total_processes, int current_sor
             compare_function = compare_by_memory;
             break;
         default:
-            compare_function = compare_by_pid; // Default to sorting by PID
+            compare_function = compare_by_pid;
             break;
     }
     qsort(processes, total_processes, sizeof(ProcessInfo), compare_function);
@@ -166,9 +166,17 @@ void display_processes(ProcessInfo *processes, int start_index, int total_proces
         end_index = total_processes;
     }
 
+    int show_scrollbar = total_processes > MAX_PROCESSES_DISPLAYED;
+
     for (int i = start_index; i < end_index; i++) {
         mvprintw(row, 0, "%-10s %-25s %-15lu", processes[i].pid, processes[i].name, processes[i].memory);
         row++;
+    }
+
+    if (show_scrollbar) {
+        float scrollbar_position = (float)start_index / (total_processes - 19);
+        int scrollbar_row = 2 + (int)(scrollbar_position * MAX_PROCESSES_DISPLAYED);
+        mvaddch(scrollbar_row, 50, '<');
     }
 }
 
