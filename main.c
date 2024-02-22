@@ -4,6 +4,7 @@
 #include <dirent.h>
 #include <string.h>
 #include <ctype.h>
+#include <unistd.h>
 
 #define MAX_PATH_LEN 512
 #define MAX_NAME_LEN 256
@@ -79,7 +80,7 @@ unsigned long get_process_memory(const char *pid) {
         unsigned long mem_pages;
         fscanf(statm_file, "%lu", &mem_pages);
         fclose(statm_file);
-        return mem_pages*4;
+        return mem_pages * 4;
     }
     return 0;
 }
@@ -162,6 +163,8 @@ int main() {
     qsort(processes, total_processes, sizeof(ProcessInfo), compare_by_pid);
 
     int ch;
+
+    timeout(1000);
 
     do {
         clear();
