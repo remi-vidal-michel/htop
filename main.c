@@ -85,9 +85,11 @@ unsigned long get_process_memory(const char *pid) {
     return 0;
 }
 
-void display_processes(ProcessInfo *processes, int start_index, int total_processes) {
+void display_processes(ProcessInfo *processes, int start_index, int total_processes, int current_sort) {
     int row = 0;
-    mvprintw(row, 0, "%-10s %-25s %-15s", "PID", "Nom", "Mémoire");
+    mvprintw(row, 0, "%-10s %-25s %-15s", "PID", "NOM", "MEM");
+    row++;
+
     row++;
 
     int end_index = start_index + MAX_PROCESSES;
@@ -98,6 +100,23 @@ void display_processes(ProcessInfo *processes, int start_index, int total_proces
     for (int i = start_index; i < end_index; i++) {
         mvprintw(row, 0, "%-10s %-25s %-15lu", processes[i].pid, processes[i].name, processes[i].memory);
         row++;
+    }
+
+    row++;
+
+    switch (current_sort) {
+        case 0:
+            mvprintw(row, 0, "Trié par PID");
+            break;
+        case 1:
+            mvprintw(row, 0, "Trié par NOM");
+            break;
+        case 2:
+            mvprintw(row, 0, "Trié par MEM");
+            break;
+        default:
+            mvprintw(row, 0, "Trié par ???");
+            break;
     }
 }
 
@@ -168,7 +187,7 @@ int main() {
 
     do {
         clear();
-        display_processes(processes, start_index, total_processes);
+        display_processes(processes, start_index, total_processes, current_sort);
         refresh();
         ch = getch();
 
