@@ -43,9 +43,7 @@ int compare_by_name(const void *a, const void *b) {
 int compare_by_memory(const void *a, const void *b) {
     const ProcessInfo *pa = (const ProcessInfo *)a;
     const ProcessInfo *pb = (const ProcessInfo *)b;
-    if (pa->memory < pb->memory) return -1;
-    if (pa->memory > pb->memory) return 1;
-    return 0;
+    return (pa->memory > pb->memory) - (pa->memory < pb->memory);
 }
 
 char* get_process_name(const char *pid) {
@@ -87,7 +85,31 @@ unsigned long get_process_memory(const char *pid) {
 
 void display_processes(ProcessInfo *processes, int start_index, int total_processes, int current_sort) {
     int row = 0;
-    mvprintw(row, 0, "%-10s %-25s %-15s", "PID", "NOM", "MEM");
+    switch (current_sort) {
+        case 0:
+            attron(A_REVERSE);
+            mvprintw(row, 0, "%-10s", "PID");
+            attroff(A_REVERSE);
+            printw(" %-25s %-15s", "NOM", "MEM");
+            break;
+        case 1:
+            mvprintw(row, 0, "%-10s", "PID");
+            attron(A_REVERSE);
+            printw(" %-25s", "NOM");
+            attroff(A_REVERSE);
+            printw(" %-15s", "MEM");
+            break;
+        case 2:
+            mvprintw(row, 0, "%-10s %-25s", "PID", "NOM");
+            attron(A_REVERSE);
+            printw(" %-15s", "MEM");
+            attroff(A_REVERSE);
+            break;
+        default:
+            mvprintw(row, 0, "%-10s %-25s %-15s", "PID", "NOM", "MEM");
+            break;
+    }
+
     row++;
 
     row++;
@@ -100,23 +122,6 @@ void display_processes(ProcessInfo *processes, int start_index, int total_proces
     for (int i = start_index; i < end_index; i++) {
         mvprintw(row, 0, "%-10s %-25s %-15lu", processes[i].pid, processes[i].name, processes[i].memory);
         row++;
-    }
-
-    row++;
-
-    switch (current_sort) {
-        case 0:
-            mvprintw(row, 0, "Trié par PID");
-            break;
-        case 1:
-            mvprintw(row, 0, "Trié par NOM");
-            break;
-        case 2:
-            mvprintw(row, 0, "Trié par MEM");
-            break;
-        default:
-            mvprintw(row, 0, "Trié par ???");
-            break;
     }
 }
 
