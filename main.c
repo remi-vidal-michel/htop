@@ -9,6 +9,7 @@
 #define MAX_PATH_LEN 512
 #define MAX_NAME_LEN 256
 #define MAX_PROCESSES_DISPLAYED 20
+#define MAX_TOTAL_PROCESSES 256
 
 int is_numeric(const char *str) {
     while (*str) {
@@ -56,11 +57,7 @@ char* get_process_name(const char *pid) {
 
     FILE *file = fopen(path, "r");
     if (file) {
-        char* name = malloc(MAX_NAME_LEN * sizeof(char));
-        if (!name) {
-            fclose(file);
-            return NULL;
-        }
+        static char name[MAX_NAME_LEN];
         fgets(name, MAX_NAME_LEN, file);
         fclose(file);
 
@@ -136,7 +133,7 @@ int main() {
     int start_index = 0;
     int total_processes = 0;
     int current_sort = 0;
-    ProcessInfo *processes = NULL;
+    ProcessInfo processes[MAX_TOTAL_PROCESSES];
 
     DIR *dir;
     struct dirent *entry;
@@ -154,13 +151,6 @@ int main() {
     }
     closedir(dir);
 
-    processes = malloc(total_processes * sizeof(ProcessInfo));
-    if (!processes) {
-        endwin();
-        printf("Erreur lors de l'allocation de la mémoire\n");
-        exit(1);
-    }
-
     dir = opendir("/proc");
     if (dir == NULL) {
         endwin();
@@ -176,7 +166,6 @@ int main() {
             char* process_name = get_process_name(entry->d_name);
             if (process_name) {
                 strncpy(processes[process_count].name, process_name, MAX_NAME_LEN);
-                free(process_name);
             } else {
                 strncpy(processes[process_count].name, "N/A", MAX_NAME_LEN);
             }
@@ -234,7 +223,6 @@ int main() {
 
     } while (ch != 'q');
 
-    free(processes);
     endwin();
 
     return 0;
