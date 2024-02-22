@@ -84,6 +84,47 @@ unsigned long get_process_memory(const char *pid) {
     return 0;
 }
 
+void update_processes(ProcessInfo *processes, int *total_processes) {
+    DIR *dir;
+    struct dirent *entry;
+    dir = opendir("/proc");
+    if (dir == NULL) {
+        printf("Erreur lors de l'ouverture de /proc\n");
+        exit(1);
+    }
+
+    *total_processes = 0;
+    while ((entry = readdir(dir)) != NULL) {
+        if (is_numeric(entry->d_name)) {
+            (*total_processes)++;
+        }
+    }
+    closedir(dir);
+
+    dir = opendir("/proc");
+    if (dir == NULL) {
+        printf("Erreur lors de l'ouverture de /proc\n");
+        exit(1);
+    }
+
+    int process_count = 0;
+    while ((entry = readdir(dir)) != NULL) {
+        if (is_numeric(entry->d_name)) {
+            strncpy(processes[process_count].pid, entry->d_name, MAX_NAME_LEN);
+            processes[process_count].pid[MAX_NAME_LEN - 1] = '\0';
+            char* process_name = get_process_name(entry->d_name);
+            if (process_name) {
+                strncpy(processes[process_count].name, process_name, MAX_NAME_LEN);
+            } else {
+                strncpy(processes[process_count].name, "N/A", MAX_NAME_LEN);
+            }
+            processes[process_count].memory = get_process_memory(entry->d_name);
+            process_count++;
+        }
+    }
+    closedir(dir);
+}
+
 void display_processes(ProcessInfo *processes, int start_index, int total_processes, int current_sort) {
     int row = 0;
     switch (current_sort) {
@@ -135,46 +176,7 @@ int main() {
     int current_sort = 0;
     ProcessInfo processes[MAX_TOTAL_PROCESSES];
 
-    DIR *dir;
-    struct dirent *entry;
-    dir = opendir("/proc");
-    if (dir == NULL) {
-        endwin();
-        printf("Erreur lors de l'ouverture de /proc\n");
-        exit(1);
-    }
-
-    while ((entry = readdir(dir)) != NULL) {
-        if (is_numeric(entry->d_name)) {
-            total_processes++;
-        }
-    }
-    closedir(dir);
-
-    dir = opendir("/proc");
-    if (dir == NULL) {
-        endwin();
-        printf("Erreur lors de l'ouverture de /proc\n");
-        exit(1);
-    }
-
-    int process_count = 0;
-    while ((entry = readdir(dir)) != NULL) {
-        if (is_numeric(entry->d_name)) {
-            strncpy(processes[process_count].pid, entry->d_name, MAX_NAME_LEN);
-            processes[process_count].pid[MAX_NAME_LEN - 1] = '\0';
-            char* process_name = get_process_name(entry->d_name);
-            if (process_name) {
-                strncpy(processes[process_count].name, process_name, MAX_NAME_LEN);
-            } else {
-                strncpy(processes[process_count].name, "N/A", MAX_NAME_LEN);
-            }
-            processes[process_count].memory = get_process_memory(entry->d_name);
-            process_count++;
-        }
-    }
-    closedir(dir);
-
+    update_processes(processes, &total_processes);
     qsort(processes, total_processes, sizeof(ProcessInfo), compare_by_pid);
 
     int ch;
@@ -216,6 +218,21 @@ int main() {
                 name_sort_order = -1;
                 qsort(processes, total_processes, sizeof(ProcessInfo), compare_by_memory);
                 current_sort = 2;
+                break;
+            default:
+                break;
+        }
+
+        update_processes(processes, &total_processes);
+        switch (current_sort) {
+            case 0:
+                qsort(processes, total_processes, sizeof(ProcessInfo), compare_by_pid);
+                break;
+            case 1:
+                qsort(processes, total_processes, sizeof(ProcessInfo), compare_by_name);
+                break;
+            case 2:
+                qsort(processes, total_processes, sizeof(ProcessInfo), compare_by_memory);
                 break;
             default:
                 break;
